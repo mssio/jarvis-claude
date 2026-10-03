@@ -15,7 +15,7 @@ Follow `AGENTS.md` for everything not covered here: sync before and after, the t
 
 ## 1. Pull and check setup
 
-Run `bash scripts/sync.sh --pull`. Then read `jarvis-vault/settings.md`. If it is missing, or has no `timezone` or `currency`, reply `Jarvis is not set up yet. Run /setup.` and stop: write no note and do not sync. A scheduled run prints this to its log.
+Run `bash scripts/sync.sh --pull`. Then read `jarvis-vault/settings.md`. If it is missing, or has no `timezone` or `currency`, reply `Jarvis isn't set up yet. Run /setup to choose your time zone and currency.` and stop: write no note and do not sync. A scheduled run prints this to its log.
 
 ## 2. Work out the dates with `date`, never by hand
 

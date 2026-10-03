@@ -140,7 +140,7 @@ A new section, `## Setup`, near the top:
 
 ## 5. Summary skill
 
-- At the start, run the same gate. If settings are missing, write `Jarvis is not set up yet. Run /setup.` and stop: no note and no sync. In cron this lands in `~/summary-cron.log`.
+- At the start, run the same gate. If settings are missing, write `Jarvis isn't set up yet. Run /setup to choose your time zone and currency.` and stop: no note and no sync. In cron this lands in `~/summary-cron.log`.
 - "Mountain Time" becomes "the time zone from `settings.md`". Spending amounts use the home currency.
 
 ## 6. Template (`jarvis-vault/`, pushed to `jarvis-vault-template`)

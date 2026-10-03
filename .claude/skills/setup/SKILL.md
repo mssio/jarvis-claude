@@ -23,8 +23,8 @@ Read `jarvis-vault/settings.md` and `jarvis-vault/about-me.md` if they exist. If
 
 ## 3. Time zone
 
-1. Run `timedatectl show -p Timezone --value` to get the server's zone. If the command fails, there is no suggestion.
-2. Ask: `Which time zone should Jarvis use? The server is set to <zone>. Reply "yes" to use it, or give another, for example Europe/London.`
+1. Run `timedatectl show -p Timezone --value` to get the server's zone. If the command fails or prints nothing, the server zone is unknown.
+2. Ask: `Which time zone should Jarvis use? The server is set to <zone>. Reply "yes" to use it, or give another, for example Europe/London.` If the server zone is unknown, ask instead: `Which time zone should Jarvis use? Give an Area/City name, for example America/Toronto.`
 3. Check the zone with Glob on `/usr/share/zoneinfo/<zone>`. If nothing matches, reply `<zone> is not a time zone name I recognise. Use the Area/City form, for example America/Toronto.` and ask again.
 
 ## 4. Currency
@@ -81,7 +81,7 @@ updated: <YYYY-MM-DD>
 
 ## 7. Warnings
 
-- **Clock:** if the chosen zone differs from the server's zone in step 3, include this line exactly, and say that dates and times are wrong until it is run:
+- **Clock:** if the chosen zone differs from the server's zone in step 3, or the server zone is unknown, include this line exactly, and say that dates and times are wrong until it is run:
   `sudo timedatectl set-timezone <zone>`
 - **Currency change:** if `currency` changed and any `jarvis-vault/spending/20*.md` ledger exists, say that older months stay in the old currency and nothing is converted.
 

@@ -214,7 +214,7 @@ It is usually `/home/vault/.local/bin/claude`. Run `crontab -e` again and add th
 - The prompt asks for the skill in words because slash commands may not run in `-p` mode.
 - In a crontab, `%` is special, so dates are written as `\%F`.
 - The monthly run is on the 1st, because cron has no "last day of the month". The 06:00 and 06:30 runs are staggered.
-- If `/setup` has not been run, each summary stops with `Jarvis is not set up yet. Run /setup.` in the log.
+- If `/setup` has not been run, each summary stops with `Jarvis isn't set up yet. Run /setup to choose your time zone and currency.` in the log.
 
 **Expected:** the next morning, `tail -n 40 ~/summary-cron.log` ends with the summary path and `SYNC OK`.
 
@@ -239,6 +239,17 @@ bash scripts/test-spending.sh
 | `bash scripts/spending.sh rate USD 2026-10-01` | A rate like `1.3xxx` and `2026-10-01` |
 | `bash scripts/spending.sh rate USD 2026-10-04` (a Sunday) | Friday's rate, dated `2026-10-02` |
 | `bash scripts/spending.sh rate XYZ 2026-10-01` | `SPENDING ERROR: the Bank of Canada publishes no rate for XYZ` |
+
+**Cross rates** (a home currency other than CAD). These use a throwaway settings file, so your real settings are not touched:
+
+```bash
+printf -- '---\ncurrency: EUR\n---\n' > /tmp/eur-settings.md
+JARVIS_SETTINGS=/tmp/eur-settings.md bash scripts/spending.sh rate USD 2026-10-01
+JARVIS_SETTINGS=/tmp/eur-settings.md bash scripts/spending.sh rate CAD 2026-10-01
+rm /tmp/eur-settings.md
+```
+
+**Expected:** each prints a rate with 6 decimals (USD to EUR a little below 1, CAD to EUR roughly 0.6 to 0.7) and the date `2026-10-01`.
 
 **From your phone** (Claude app, session "Jarvis"), one at a time. After each write, check a new commit appears in your private vault on GitHub.
 
@@ -277,4 +288,4 @@ tmux new-session -d -s jarvis "bash $HOME/jarvis/scripts/start-remote.sh"
 - **A conflict.** You and Claude changed the same line of the same note. Run `cd ~/jarvis/jarvis-vault && git pull --rebase`, fix the marked lines, then `git add -A && git rebase --continue && git push`.
 - **The session is gone from the app.** Check `tmux ls`. `start-remote.sh` restarts after a network drop, and the `@reboot` line restarts it after a reboot.
 - **Claude asks permission for every edit.** The folder was not trusted. Run `claude` in `~/jarvis` once and accept the trust prompt; `claude doctor` shows settings errors.
-- **No scheduled summaries.** Read `~/summary-cron.log`. Empty: check `systemctl status cron`. `claude: not found`: fix the path in `crontab -e`. `not set up yet`: run `/setup`. Otherwise run the same `claude -p "…"` line by hand in `~/jarvis` to see what happens.
+- **No scheduled summaries.** Read `~/summary-cron.log`. Empty: check `systemctl status cron`. `claude: not found`: fix the path in `crontab -e`. `isn't set up yet`: run `/setup`. Otherwise run the same `claude -p "…"` line by hand in `~/jarvis` to see what happens.

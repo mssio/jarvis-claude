@@ -22,7 +22,7 @@ Use `scripts/sync.sh` for all syncing. Do not run `git add`, `git commit`, `git 
 
 After step 1 of Git sync, read `jarvis-vault/settings.md` and `jarvis-vault/about-me.md`.
 
-If `settings.md` is missing, or its frontmatter has no `timezone` or no 3-letter `currency`, reply only:
+If `settings.md` is missing, or its frontmatter has no `timezone` (or one containing spaces) or no 3-letter `currency`, reply only:
 
 `Jarvis isn't set up yet. Run /setup to choose your time zone and currency.`
 
@@ -60,7 +60,7 @@ Every note path in this file is inside `jarvis-vault/`. For example, `tasks/todo
 6. Link related notes with `[[wikilinks]]`. When a log or note mentions a person who has a note in `people/`, link to it.
 7. Record only what I gave you or what a source says. Label anything you inferred as "Inferred:". Do not fill gaps with guesses.
 8. If the folder, date, or topic is ambiguous, file it in `inbox/` and tell me.
-9. After writing and syncing, reply with one line: the file path, what changed, and whether it was pushed. The one exception is the `summary` skill, which has its own reply format. Follow the skill.
+9. After writing and syncing, reply with one line: the file path, what changed, and whether it was pushed. The exceptions are the `summary` and `setup` skills, which have their own reply formats. Follow the skill.
 
 ## People notes
 
