@@ -151,6 +151,41 @@ expect "delta: no change" "0.00" "$(sp delta 5.00 5.00)"
 expect_error "delta: not a number" "not a number" sp delta 1,284.35 10
 expect_error "delta: missing value" "usage: delta CURRENT PREVIOUS" sp delta 10
 
+# --- settings ---
+
+# settings FILE LINE...: writes a settings note whose frontmatter holds the given lines
+settings() {
+  local file="$1"
+  shift
+  { echo '---'; echo 'type: settings'; printf '%s\n' "$@"; echo '---'; echo; echo '# Settings'; } > "$file"
+}
+
+settings "$tmp/cad.md" "timezone: America/Edmonton" "currency: CAD"
+settings "$tmp/eur.md" "timezone: Europe/Berlin" "currency: EUR"
+settings "$tmp/quoted.md" "timezone: UTC" 'currency: "eur"'
+settings "$tmp/nocurrency.md" "timezone: UTC"
+printf '%s\n' '# Settings' '' 'currency: CAD' > "$tmp/nofrontmatter.md"
+
+# The rate tests below use a CAD home unless they say otherwise.
+export JARVIS_SETTINGS="$tmp/cad.md"
+
+expect_error "settings: EUR home refuses EUR" "already in EUR" \
+  env JARVIS_SETTINGS="$tmp/eur.md" bash scripts/spending.sh rate EUR 2026-10-01
+expect_error "settings: quoted lowercase value is read" "already in EUR" \
+  env JARVIS_SETTINGS="$tmp/quoted.md" bash scripts/spending.sh rate EUR 2026-10-01
+expect_error "settings: missing file means not set up" "not set up yet" \
+  env JARVIS_SETTINGS="$tmp/none.md" bash scripts/spending.sh rate USD 2026-10-01
+expect_error "settings: no currency key" "no valid currency" \
+  env JARVIS_SETTINGS="$tmp/nocurrency.md" bash scripts/spending.sh rate USD 2026-10-01
+expect_error "settings: values outside the frontmatter are ignored" "no valid currency" \
+  env JARVIS_SETTINGS="$tmp/nofrontmatter.md" bash scripts/spending.sh rate USD 2026-10-01
+
+# --- check-currency (offline cases only) ---
+
+expect "check-currency: CAD needs no network" "ok" "$(sp check-currency CAD)"
+expect_error "check-currency: bad code" "not a currency code" sp check-currency US
+expect_error "check-currency: missing code" "usage: check-currency CURRENCY" sp check-currency
+
 # --- rate (input checks only; they fail before any network call) ---
 
 expect_error "rate: CAD is refused" "already in CAD" sp rate CAD 2026-10-01
