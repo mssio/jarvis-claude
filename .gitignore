@@ -1,0 +1,9 @@
+# The vault is its own private repository, cloned here (see DEPLOY.md)
+jarvis-vault/
+
+# Claude Code settings that belong to one machine only
+.claude/settings.local.json
+
+# Operating system files
+.DS_Store
+Thumbs.db
