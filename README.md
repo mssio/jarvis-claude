@@ -2,7 +2,7 @@
 
 An Obsidian vault that Claude Code maintains for you. You send plain messages from your phone ("log this", "add a task", "spent 14.50 on lunch"); Claude files them as notes, and you read them in Obsidian.
 
-This repository holds the rules and scripts and is public. Your notes and settings live in your own **private** vault, created from the [vault template](https://github.com/mssio/jarvis-vault-template).
+This repository holds the rules and scripts and is public. Your notes and settings live in your own **private** vault.
 
 ## Getting started
 
@@ -29,16 +29,11 @@ Obsidian on desktop and phone  (reading and browsing)
 - **The rule.** `AGENTS.md` tells Claude to pull before every request, check Jarvis is set up, and push after every change.
 - **The script.** `scripts/sync.sh` commits, fetches, rebases, and pushes in one step. It runs one sync at a time and retries a push that lost a race with another device.
 - **The safety net.** A Stop hook in `.claude/settings.json` runs the same script after every reply, in case Claude forgot.
-
-The server pulls your fork on every request, so changes you sync into it arrive on their own.
+- **Updates.** The server pulls your fork on every request, so changes you sync into it arrive on their own.
 
 ## /setup
 
-Jarvis does nothing until `/setup` has run. It asks, one question at a time, for:
-
-- your **time zone**, checked against the system's time zone list;
-- your **home currency**, checked against the Bank of Canada (spending is recorded in it; other currencies are converted with Bank of Canada rates);
-- three lines **about you**: who you are, what to track, and how you like answers written.
+Jarvis does nothing until `/setup` has run. It asks, one question at a time, for your **time zone** (checked against the system's list), your **home currency** (checked against the Bank of Canada; spending is recorded in it, and other currencies are converted with Bank of Canada rates), and three lines **about you**: who you are, what to track, and how you like answers written.
 
 It saves them as `settings.md` and `about-me.md` in your private vault. Run `/setup` again to change anything, or edit `settings.md` as Properties in Obsidian. Dates follow the server clock; `/setup` gives you the command to set it if it differs.
 
