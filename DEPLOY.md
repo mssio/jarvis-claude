@@ -1,71 +1,40 @@
 # Deploying Jarvis
 
-Part A is a one-time setup on GitHub, done from your computer. Part B sets up the Ubuntu Server that runs Jarvis, including the tests.
+Part A makes your own copies on GitHub (once, in a browser). Part B sets up the Ubuntu Server that runs Jarvis, including `/setup` and the tests.
 
-Jarvis uses two repositories:
+Jarvis uses three repositories:
 
-| Repository | Visibility | Holds | The server needs |
+| Repository | Visibility | What it is | The server needs |
 |---|---|---|---|
-| `jarvis-claude` | Public | Rules, scripts, skills, guides | Read access (HTTPS, no key) |
-| `jarvis-vault` | **Private** | Your notes, created from the public `jarvis-vault-template` | Read and write (an SSH deploy key) |
+| `mssio/jarvis-claude` | Public | The upstream code: rules, scripts, skills, guides | Nothing; you fork it |
+| `<your-github-user>/jarvis-claude` | Public | Your fork, which your server pulls | Read access (HTTPS, no key) |
+| `<your-github-user>/jarvis-vault` | **Private** | Your notes, created from `mssio/jarvis-vault-template` | Read and write (an SSH deploy key) |
+
+Replace `<your-github-user>` everywhere below with your GitHub username.
 
 ---
 
-## Part A: GitHub setup (once, on your computer)
+## Part A: Make your own copies (once, in a browser)
 
-### A1. Publish the code repository
+### A1. Fork the code
 
-This sends the project folder to GitHub as a fresh history.
+Open `https://github.com/mssio/jarvis-claude` and click **Fork**. Forks of public repositories are public, which is fine: the code holds no personal data. Your server pulls from your fork, so nobody else's changes reach it until you choose to sync (step 12).
 
-If a `jarvis-claude` repository already exists on GitHub with older history, **delete it first** (Settings > General > Danger Zone > Delete this repository), then create it again, empty, as **Public**. A force push is not enough before going public: GitHub keeps force-pushed commits reachable by their ID and shows them in the repository's activity, so the old history would still be readable.
+### A2. Create your private vault
 
-Optionally, set GitHub's private `noreply` address as your git email first (GitHub > Settings > Emails > "Keep my email addresses private" shows it).
+Open `https://github.com/mssio/jarvis-vault-template`, then **Use this template** > **Create a new repository**. Name it `jarvis-vault` and choose **Private**. It will hold names, birthdays, spending, and daily logs.
+
+### A3. A computer for editing the rules (optional)
+
+Only needed if you want to change the rules or scripts in your fork:
 
 ```bash
+git clone https://github.com/<your-github-user>/jarvis-claude.git jarvis
 cd jarvis
-git config user.email "<id>+mssio@users.noreply.github.com"   # optional
-git add -A
-git commit -m "chore: initial public release"
-git remote add origin https://github.com/mssio/jarvis-claude.git
-git push -u origin main
+git clone https://github.com/<your-github-user>/jarvis-vault.git jarvis-vault
 ```
 
-**Expected:** `main -> main`.
-
-### A2. Publish the vault template
-
-Create an empty **public** repository named `jarvis-vault-template` on GitHub (no README), then:
-
-```bash
-cd jarvis-vault
-git init -b main
-git add -A
-git commit -m "chore: vault template"
-git remote add origin https://github.com/mssio/jarvis-vault-template.git
-git push -u origin main
-cd ..
-```
-
-**Expected:** `main -> main`. Then on GitHub: the template's Settings > General > tick **Template repository**.
-
-### A3. Create your private vault
-
-On the template's GitHub page: **Use this template** > **Create a new repository** > name it `jarvis-vault` and choose **Private**.
-
-### A4. Use the private vault on this computer
-
-```bash
-mv jarvis-vault ../jarvis-vault-template
-git clone https://github.com/mssio/jarvis-vault.git jarvis-vault
-```
-
-Fill in `jarvis-vault/about-me.md` with 2 to 4 lines about you, then:
-
-```bash
-bash scripts/sync.sh "chore: about me"
-```
-
-**Expected:** `SYNC OK: pushed …`. The template copy now sits next to the project folder, not inside it, so it can never end up in the public repository. Keep `../jarvis-vault-template` only if you want to update the template later.
+**Expected:** both clones succeed. Edits to the rules sync with `bash scripts/sync.sh --code "chore: …"`.
 
 ---
 
@@ -83,12 +52,12 @@ Run each step in order. Steps 1 and 2 use `sudo`; everything from step 3 on runs
 
 ```bash
 sudo apt update && sudo apt install -y git tmux curl jq cron ca-certificates openssh-client tzdata
-sudo timedatectl set-timezone America/Edmonton
+sudo timedatectl set-timezone <Area/City>    # for example America/Edmonton
 sudo systemctl enable --now cron
 date
 ```
 
-**Expected:** `date` shows Mountain Time (MDT or MST). Jarvis uses this clock for every date and time it writes.
+**Expected:** `date` shows your local time. Jarvis uses this clock for every date and time it writes; step 9 records the same zone in your settings.
 
 | Package | Needed for |
 |---|---|
@@ -97,7 +66,7 @@ date
 | curl, jq | Bank of Canada exchange rates |
 | cron | Scheduled summaries and starting Remote Control on boot |
 | ca-certificates, openssh-client | Secure connections to GitHub |
-| tzdata | The Mountain Time clock |
+| tzdata | Time zone data |
 
 ### 3. A dedicated user
 
@@ -123,11 +92,11 @@ claude --version
 The server writes notes to your private vault, so it needs a key for that one repository. The key has no passphrase because cron and the sync hook cannot type one.
 
 ```bash
-ssh-keygen -t ed25519 -C "jarvis-homelab" -f ~/.ssh/id_ed25519 -N ""
+ssh-keygen -t ed25519 -C "jarvis-server" -f ~/.ssh/id_ed25519 -N ""
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Copy the printed line. On GitHub, open your **private `jarvis-vault`** repository > Settings > Deploy keys > Add deploy key, paste it, and tick **Allow write access**. A deploy key reaches only that repository. The code repository needs no key: it is public and the server only reads it.
+Copy the printed line. On GitHub, open your **private `jarvis-vault`** repository > Settings > Deploy keys > Add deploy key, paste it, and tick **Allow write access**. A deploy key reaches only that repository. Your fork needs no key: it is public and the server only reads it.
 
 Now connect once to accept GitHub's host key:
 
@@ -137,17 +106,17 @@ ssh -T git@github.com
 
 Before typing `yes`, check the fingerprint matches GitHub's published ED25519 fingerprint, `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU` (see "GitHub's SSH key fingerprints" on docs.github.com).
 
-**Expected:** `Hi mssio/jarvis-vault! You've successfully authenticated, but GitHub does not provide shell access.`
+**Expected:** `Hi <your-github-user>/jarvis-vault! You've successfully authenticated, but GitHub does not provide shell access.`
 
 Do this before step 6: the sync script never answers a host-key prompt, so it would fail until the key is accepted.
 
 ### 6. Clone both repositories
 
 ```bash
-git config --global user.name "Jarvis Homelab"
-git config --global user.email "jarvis@homelab.local"
-git clone https://github.com/mssio/jarvis-claude.git ~/jarvis
-git clone git@github.com:mssio/jarvis-vault.git ~/jarvis/jarvis-vault
+git config --global user.name "Jarvis Server"
+git config --global user.email "jarvis@localhost"
+git clone https://github.com/<your-github-user>/jarvis-claude.git ~/jarvis
+git clone git@github.com:<your-github-user>/jarvis-vault.git ~/jarvis/jarvis-vault
 cd ~/jarvis && bash scripts/sync.sh --pull
 ```
 
@@ -192,7 +161,34 @@ tmux ls
 
 **Expected:** a line starting with `jarvis:`, and the session named "Jarvis" in the Claude app. Attach any time with `tmux attach -t jarvis`.
 
-### 9. Scheduled summaries
+### 9. Run `/setup`
+
+Until this is done, every request gets the reply `Jarvis isn't set up yet. Run /setup to choose your time zone and currency.`
+
+Open the "Jarvis" session in the Claude app (or run `claude` in `~/jarvis` on the server) and send `/setup`. It asks one question at a time:
+
+| It asks | Example answer | What it does with it |
+|---|---|---|
+| Time zone, suggesting the server's | `yes` (or `America/Toronto`) | Checks it is a real time zone name |
+| Home currency | `CAD` | Checks the Bank of Canada publishes it; spending is recorded in it |
+| Who you are | `A software developer` | About me |
+| What to keep track of | `Meetings, tasks, birthdays, spending` | About me |
+| How you like answers written | `Short bullet points, dates first` | About me |
+
+It writes `settings.md` and `about-me.md` in your private vault and pushes them.
+
+**Expected:** a reply ending with:
+
+```
+Saved: time zone <zone>, currency <CODE>, About me (3 lines).
+Jarvis is ready.
+```
+
+If the reply includes a `sudo timedatectl set-timezone …` line, your server clock is in a different zone: run that line (as a user with sudo) so dates come out right.
+
+Run `/setup` again any time to change a value; it shows the current ones first and keeps what you don't change. You can also edit `settings.md` as Properties in Obsidian.
+
+### 10. Scheduled summaries
 
 Cron runs with a minimal `PATH`, so find Claude Code's full path first:
 
@@ -203,7 +199,7 @@ command -v claude
 It is usually `/home/vault/.local/bin/claude`. Run `crontab -e` again and add these lines (use your path if it differs):
 
 ```cron
-# Jarvis summaries. Times are Mountain Time (step 2).
+# Jarvis summaries. Times are the server's time zone (step 2).
 # Daily: every day at 06:00, for today.
 0 6 * * * cd ~/jarvis && /home/vault/.local/bin/claude -p "Run the summary skill for the daily period, for today." --permission-mode acceptEdits >> ~/summary-cron.log 2>&1
 
@@ -218,12 +214,13 @@ It is usually `/home/vault/.local/bin/claude`. Run `crontab -e` again and add th
 - The prompt asks for the skill in words because slash commands may not run in `-p` mode.
 - In a crontab, `%` is special, so dates are written as `\%F`.
 - The monthly run is on the 1st, because cron has no "last day of the month". The 06:00 and 06:30 runs are staggered.
+- If `/setup` has not been run, each summary stops with `Jarvis is not set up yet. Run /setup.` in the log.
 
 **Expected:** the next morning, `tail -n 40 ~/summary-cron.log` ends with the summary path and `SYNC OK`.
 
-### 10. Tests
+### 11. Tests
 
-**Script tests** (no network needed except where noted):
+**Script tests** (offline):
 
 ```bash
 cd ~/jarvis
@@ -231,12 +228,14 @@ bash scripts/test-sync.sh
 bash scripts/test-spending.sh
 ```
 
-**Expected:** `16 passed, 0 failed, 0 skipped`, then `35 passed, 0 failed`. A `FAIL` line shows what was expected and what came out.
+**Expected:** `16 passed, 0 failed, 0 skipped`, then `43 passed, 0 failed`. A `FAIL` line shows what was expected and what came out.
 
-**Live exchange rates:**
+**Live exchange rates** (these assume `/setup` saved CAD as the home currency):
 
 | Run | Expected |
 |---|---|
+| `bash scripts/spending.sh check-currency USD` | `ok` |
+| `bash scripts/spending.sh check-currency XYZ` | `SPENDING ERROR: the Bank of Canada publishes no rate for XYZ` |
 | `bash scripts/spending.sh rate USD 2026-10-01` | A rate like `1.3xxx` and `2026-10-01` |
 | `bash scripts/spending.sh rate USD 2026-10-04` (a Sunday) | Friday's rate, dated `2026-10-02` |
 | `bash scripts/spending.sh rate XYZ 2026-10-01` | `SPENDING ERROR: the Bank of Canada publishes no rate for XYZ` |
@@ -255,10 +254,12 @@ bash scripts/test-spending.sh
 | 8 | `Spent 20 USD on a book, food.` | The reply shows the Bank of Canada rate; the row's Original column shows `20.00 USD × …` |
 | 9 | `Delete the book.` | Asks first, showing the date with its weekday; after yes, Totals is back to 14.50 |
 | 10 | `Spent 100 XYZ on dinner, food.` | Says there is no XYZ rate and asks for one; shows the converted entry with its date and asks for yes; saves with `(rate given)` |
+| 11 | On the server, `mv ~/jarvis/jarvis-vault/settings.md /tmp/`, then send `What do I need to do?` | `Jarvis isn't set up yet. Run /setup …` and nothing else |
+| 12 | `mv /tmp/settings.md ~/jarvis/jarvis-vault/`, then send `/setup` and keep every value | The same values, then `Jarvis is ready.` |
 
-### 11. Updating and troubleshooting
+### 12. Updating and troubleshooting
 
-**Updating.** Every request starts with `sync.sh --pull`, which fast-forwards `~/jarvis` from GitHub, so pushes to the code repository reach the server on their own. Changes to `AGENTS.md` or `.claude/` take effect when the session restarts:
+**Updating.** To get upstream changes, open your fork on GitHub and click **Sync fork**. Every request starts with `sync.sh --pull`, which fast-forwards `~/jarvis` from your fork, so the server picks them up on its next request. Changes to `AGENTS.md` or `.claude/` take effect when the session restarts:
 
 ```bash
 tmux kill-session -t jarvis
@@ -267,6 +268,8 @@ tmux new-session -d -s jarvis "bash $HOME/jarvis/scripts/start-remote.sh"
 
 **If something goes wrong:**
 
+- **"Jarvis isn't set up yet."** Run `/setup` (step 9).
+- **Times off by whole hours.** The server clock is in a different zone from `settings.md`. Run the `sudo timedatectl set-timezone …` line that `/setup` printed, or redo step 2.
 - **SYNC FAILED.** Nothing is lost: the note is committed in `~/jarvis/jarvis-vault` and the next successful sync pushes it. The message says why, usually GitHub unreachable or a deploy key without write access.
 - **SYNC FAILED: another sync is still running.** A sync took more than 60 seconds, for example a slow network during a cron summary. Try again; if it repeats, check for a stuck process with `ps aux | grep sync.sh`.
 - **SYNC FAILED: jarvis-vault is not cloned yet.** Do step 6.
@@ -274,5 +277,4 @@ tmux new-session -d -s jarvis "bash $HOME/jarvis/scripts/start-remote.sh"
 - **A conflict.** You and Claude changed the same line of the same note. Run `cd ~/jarvis/jarvis-vault && git pull --rebase`, fix the marked lines, then `git add -A && git rebase --continue && git push`.
 - **The session is gone from the app.** Check `tmux ls`. `start-remote.sh` restarts after a network drop, and the `@reboot` line restarts it after a reboot.
 - **Claude asks permission for every edit.** The folder was not trusted. Run `claude` in `~/jarvis` once and accept the trust prompt; `claude doctor` shows settings errors.
-- **Timestamps in the wrong time zone.** Run `date`; if it is not Mountain Time, redo step 2.
-- **No scheduled summaries.** Read `~/summary-cron.log`. Empty: check `systemctl status cron`. `claude: not found`: fix the path in `crontab -e`. Otherwise run the same `claude -p "…"` line by hand in `~/jarvis` to see what happens.
+- **No scheduled summaries.** Read `~/summary-cron.log`. Empty: check `systemctl status cron`. `claude: not found`: fix the path in `crontab -e`. `not set up yet`: run `/setup`. Otherwise run the same `claude -p "…"` line by hand in `~/jarvis` to see what happens.
