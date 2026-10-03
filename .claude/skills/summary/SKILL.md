@@ -11,11 +11,11 @@ Arguments: `$ARGUMENTS`
 
 The first argument is the period: `daily`, `weekly`, or `monthly`. The optional second argument is a reference date `YYYY-MM-DD`. Without it, the reference date is today. If the period is missing or not one of the three, stop and ask which one I want.
 
-Follow `AGENTS.md` for everything not covered here: sync before and after, Mountain Time, wikilinks, and record only what the notes say. All note paths below are inside `jarvis-vault/`. Run every command from the project folder.
+Follow `AGENTS.md` for everything not covered here: sync before and after, the time zone from settings.md, wikilinks, and record only what the notes say. All note paths below are inside `jarvis-vault/`. Run every command from the project folder.
 
-## 1. Pull
+## 1. Pull and check setup
 
-Run `bash scripts/sync.sh --pull`.
+Run `bash scripts/sync.sh --pull`. Then read `jarvis-vault/settings.md`. If it is missing, or has no `timezone` or `currency`, reply `Jarvis is not set up yet. Run /setup.` and stop: write no note and do not sync. A scheduled run prints this to its log.
 
 ## 2. Work out the dates with `date`, never by hand
 
@@ -112,10 +112,10 @@ Sections, in this order. Keep every heading. Under a heading with nothing to sho
 9. `## Open tasks with no due date`
 10. `## Inbox`
 
-The Spending section, with every number copied from the script (add thousands separators for display only):
+The Spending section, with every number copied from the script (add thousands separators for display only): Amounts are in the home currency from settings.md.
 
-    - **Total: 1,284.35 CAD** (47 entries) · [[spending/2026-10|ledger]]
-    - Previous month: 1,102.80 CAD (+181.55)
+    - **Total: 1,284.35 <home>** (47 entries) · [[spending/2026-10|ledger]]
+    - Previous month: 1,102.80 <home> (+181.55)
     - By category:
       - groceries: 412.60 (32%)
     - Largest entries:

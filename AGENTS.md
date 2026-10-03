@@ -10,13 +10,25 @@ Claude Code reads this file automatically when it starts in the project folder (
 
 1. **Before** you read or write anything for a request, run `bash scripts/sync.sh --pull` so you are working on the latest notes. I sometimes edit notes by hand on another device.
 2. **After** every request that created or changed any file, sync before you reply. Notes: `bash scripts/sync.sh "type: short summary"`. Setup files (anything outside `jarvis-vault/`): `bash scripts/sync.sh --code "type: short summary"`. If a request changed both, run both. Run each once per request, after all the files are written.
-3. The commit message starts with one of these types: `log`, `task`, `person`, `event`, `research`, `article`, `doc`, `inbox`, `summary`, `spending`, `chore`. You may also see `auto: unsynced changes` commits in the history. `scripts/sync.sh` makes those itself when it finds uncommitted changes, such as hand edits from Obsidian. Never use `auto` yourself. `--pull` also updates the code repository when it has no local changes, and prints a `SYNC NOTE:` line about it. A `SYNC NOTE:` is information, not a failure. Example: `bash scripts/sync.sh "person: add Jane Doe with birthday"`. Do not put private details in the message beyond what is needed to recognise the change.
+3. The commit message starts with one of these types: `log`, `task`, `person`, `event`, `research`, `article`, `doc`, `inbox`, `summary`, `spending`, `setup`, `chore`. You may also see `auto: unsynced changes` commits in the history. `scripts/sync.sh` makes those itself when it finds uncommitted changes, such as hand edits from Obsidian. Never use `auto` yourself. `--pull` also updates the code repository when it has no local changes, and prints a `SYNC NOTE:` line about it. A `SYNC NOTE:` is information, not a failure. Example: `bash scripts/sync.sh "person: add Jane Doe with birthday"`. Do not put private details in the message beyond what is needed to recognise the change.
 4. Do not tell me something is saved until the script prints `SYNC OK`. If it prints `SYNC FAILED`, tell me the exact message, and tell me the note is written on the server but not yet on GitHub.
 5. If the sync fails, run it one more time at most. Never force push, never run `git reset`, `git clean`, `git rebase`, or `git checkout` to discard anything, and never rewrite history. A failed sync loses nothing: the change stays committed locally and the next successful sync pushes it.
 6. If the script reports a conflict, stop and tell me. Do not try to resolve it yourself.
 7. A request that only reads notes needs step 1 only.
 
 Use `scripts/sync.sh` for all syncing. Do not run `git add`, `git commit`, `git pull`, or `git push` yourself.
+
+## Setup (check on every request)
+
+After step 1 of Git sync, read `jarvis-vault/settings.md` and `jarvis-vault/about-me.md`.
+
+If `settings.md` is missing, or its frontmatter has no `timezone` or no 3-letter `currency`, reply only:
+
+`Jarvis isn't set up yet. Run /setup to choose your time zone and currency.`
+
+and do nothing else for that request. The only exceptions are `/setup` itself and questions about how to set up Jarvis.
+
+`settings.md` and `about-me.md` are written by `/setup` (`.claude/skills/setup/SKILL.md`). Use their values wherever these rules mention the time zone, the home currency, or how I like answers written.
 
 ## Vault structure
 
@@ -31,7 +43,8 @@ Every note path in this file is inside `jarvis-vault/`. For example, `tasks/todo
 - `articles/` : summaries of things I save, always with the source URL
 - `docs/` : how-to and process documentation
 - `inbox/` : anything you are unsure where to file
-- `spending/YYYY-MM.md` : one spending ledger per month, in CAD; `spending/categories.md` : the approved spending categories
+- `settings.md`, `about-me.md` : written by `/setup`; read on every request
+- `spending/YYYY-MM.md` : one spending ledger per month, in the home currency; `spending/categories.md` : the approved spending categories
 - `summaries/daily/`, `summaries/weekly/`, `summaries/monthly/` : generated summaries, written only by the `summary` skill (`.claude/skills/summary/SKILL.md`, run with `/summary`). A week runs Monday to Sunday.
 - `templates/` : the shape of each note type. Copy from these, never edit them unless I ask.
 
@@ -41,7 +54,7 @@ Every note path in this file is inside `jarvis-vault/`. For example, `tasks/todo
 
 1. Every note is a `.md` file with YAML frontmatter. The default fields are `type`, `created`, `updated`, `tags`, `source`. People and event notes use the fields listed in their own sections below.
 2. Use the matching file in `templates/` as the starting shape for a new note.
-3. File names are lowercase with hyphens, no spaces. Dates are `YYYY-MM-DD` and times are 24-hour `HH:MM`, both in Mountain Time (America/Edmonton). Run `date` to get the current date and time instead of assuming it. The server clock is set to Mountain Time.
+3. File names are lowercase with hyphens, no spaces. Dates are `YYYY-MM-DD` and times are 24-hour `HH:MM`, both in the time zone from `settings.md`. The server clock is set to it, so run `date` to get the current date and time instead of assuming it.
 4. When I say "log this", append an entry to today's daily log in the form `- HH:MM entry text`. Create the file from `templates/daily-log.md` if it does not exist yet. Never rewrite or delete earlier entries.
 5. Before creating a note, check whether one already exists on that topic. If it does, update it instead and set `updated` to today's date.
 6. Link related notes with `[[wikilinks]]`. When a log or note mentions a person who has a note in `people/`, link to it.
@@ -75,23 +88,23 @@ Every note path in this file is inside `jarvis-vault/`. For example, `tasks/todo
 
 ## Spending
 
-Ledgers are `spending/YYYY-MM.md`, one per month, named after the month the spending happened (not when I told you). Create a missing one from `templates/spending.md`. All amounts are CAD with two decimals. Never do the arithmetic yourself: use `bash scripts/spending.sh`, and copy its numbers exactly.
+Ledgers are `spending/YYYY-MM.md`, one per month, named after the month the spending happened (not when I told you). Create a missing one from `templates/spending.md`. All amounts are in the home currency (`currency` in `settings.md`), with two decimals. When you create a ledger, fill its `currency:` field and the Totals line with that code. Never do the arithmetic yourself: use `bash scripts/spending.sh`, and copy its numbers exactly.
 
 **Adding**, for example "spent 14.50 on lunch, food":
 1. Amount: required. Ask if missing or unclear.
 2. Category: required. If missing, ask and list the categories in `spending/categories.md`. Match ignoring case and store lowercase. If it is not on the list, ask `New category 'snacks'? Existing: food, transport. Yes, or pick one.` and save nothing until I answer. You may suggest a likely existing category, but never pick one yourself. On yes, add `- snacks` to `spending/categories.md`.
 3. Date: today if I gave none, and say `(today)` in the reply. Work out "yesterday", "last Friday", and so on with `date`.
 4. Description: optional, from what I said. Replace any `|` with `/`.
-5. Another currency: run `bash scripts/spending.sh rate CUR DATE`, then `bash scripts/spending.sh convert AMOUNT RATE`. Put `AMOUNT CUR × RATE (BoC RATE-DATE)` in the Original column. If `rate` fails for any reason (no rate for that currency, network down, and so on), save nothing. Tell me the error and ask: `No Bank of Canada rate for XYZ. What is 1 XYZ in CAD?` When I give a rate, run `convert` with it, then confirm before saving: `Save Friday 2026-10-02 · 100.00 XYZ × 0.0123 (rate given) = 1.23 CAD · food · "dinner"? Yes / no`. Save only after my yes, recording `(rate given)` in place of `(BoC …)`.
-6. If the ledger already exists, first run `bash scripts/spending.sh total jarvis-vault/spending/YYYY-MM.md`. If it reports a bad row, stop: tell me the line, and save nothing. Otherwise add the row in date order (after rows with the same date). Run `total` again, and rewrite the `## Totals` section from its output: `- **Total: X CAD** (N entries)`, then one `- category: amount (pct%)` line per CATEGORY line.
-7. Sync with type `spending`, then reply in one line, for example `spending/2026-10.md: 14.50 CAD food "lunch" on Friday 2026-10-02 (today). October total 76.20 CAD. Pushed.` For a converted entry, add the rate, for example `45.00 USD × 1.3712 (BoC 2026-10-01) = 61.70 CAD`.
+5. Another currency: run `bash scripts/spending.sh rate CUR DATE`, then `bash scripts/spending.sh convert AMOUNT RATE`. Put `AMOUNT CUR × RATE (BoC RATE-DATE)` in the Original column. If `rate` fails for any reason (no rate for that currency, network down, and so on), save nothing. Tell me the error and ask: `No Bank of Canada rate for XYZ. What is 1 XYZ in <home>?` When I give a rate, run `convert` with it, then confirm before saving: `Save Friday 2026-10-02 · 100.00 XYZ × 0.0123 (rate given) = 1.23 <home> · food · "dinner"? Yes / no`. Save only after my yes, recording `(rate given)` in place of `(BoC …)`.
+6. If the ledger already exists, first run `bash scripts/spending.sh total jarvis-vault/spending/YYYY-MM.md`. If it reports a bad row, stop: tell me the line, and save nothing. Otherwise add the row in date order (after rows with the same date). Run `total` again, and rewrite the `## Totals` section from its output: `- **Total: X <home>** (N entries)`, then one `- category: amount (pct%)` line per CATEGORY line.
+7. Sync with type `spending`, then reply in one line, for example `spending/2026-10.md: 14.50 <home> food "lunch" on Friday 2026-10-02 (today). October total 76.20 <home>. Pushed.` For a converted entry, add the rate, for example `45.00 USD × 1.3712 (BoC 2026-10-01) = 61.70 <home>`.
 
 **Editing, deleting, rate corrections, and category renames: always ask first.** Every change to an existing row needs my yes, even when only one row matches. The question always shows the date with its weekday, for example:
-- `Delete this entry? Friday 2026-10-02 · 14.50 CAD · food · "lunch". Yes / no`
-- `Change this entry? Saturday 2026-10-03 · shopping · "headphones": 61.70 → 59.99 CAD. Yes / no`
+- `Delete this entry? Friday 2026-10-02 · 14.50 <home> · food · "lunch". Yes / no`
+- `Change this entry? Saturday 2026-10-03 · shopping · "headphones": 61.70 → 59.99 <home>. Yes / no`
 - `Rename category food → eating out? This changes 12 entries from Thursday 2026-10-01 to Wednesday 2026-10-28 across 1 month. Yes / no`
 
-If more than one row matches, list them with their dates and weekdays and ask which one. A rate correction recalculates the CAD amount with `convert` and updates Original. After the change, recalculate Totals in every ledger touched, then sync. Never remove or rename a category unless I ask. A rename updates `spending/categories.md` and every matching row in every month.
+If more than one row matches, list them with their dates and weekdays and ask which one. A rate correction recalculates the home-currency amount with `convert` and updates Original. After the change, recalculate Totals in every ledger touched, then sync. Never remove or rename a category unless I ask. A rename updates `spending/categories.md` and every matching row in every month.
 
 **Other:**
 - Do not add spending to the daily log.
@@ -107,4 +120,4 @@ If more than one row matches, list them with their dates and weekdays and ask wh
 
 ## About me
 
-At the start of every session, read `jarvis-vault/about-me.md`: who I am, what I track, and how I like answers written. Personal details belong there, in the private vault, never in this file.
+At the start of every session, read `jarvis-vault/about-me.md`: who I am, what I track, and how I like answers written. Personal details belong there, in the private vault, never in this file. It is written by /setup.
